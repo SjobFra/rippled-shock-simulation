@@ -6,6 +6,7 @@ import numpy as np
 import h5py
 import time
 import warnings
+import os
 from multiprocessing import Pool
 from simulation_functions import changeFrame
 from simulation_functions import scatterParticle
@@ -118,9 +119,9 @@ def writeResult(result):
     #Append result to a list of lists
     list_of_results.append(result)
         
-#    #Also print status each time 1000 particles are simulated
-#    if (len(list_of_results)) % 100 == 0:
-#            print("\rNumber of particles simulated so far: " + str((len(list_of_results))), end='\r', flush=True)
+    #Also print status each time 1000 particles are simulated
+    if (len(list_of_results)) % 1000 == 0:
+            print("\rNumber of particles simulated so far: " + str((len(list_of_results))), end='\r', flush=True)
 
 
 def parallelSim(particle_number, t_max, v_up, starting_x, starting_v):
@@ -153,20 +154,20 @@ def parallelSim(particle_number, t_max, v_up, starting_x, starting_v):
     #Write starting parameters to file  
     data = group.create_dataset("T=0", data=parameters)
     
-#    ###For testing purposes
-#    wantedparticle = 0
-#    print(data[wantedparticle])
-#    attrib = np.append(data[wantedparticle], [group.attrs['t_max'], 1, group.attrs['particles_total'], group.attrs['v_up'], group.attrs['obliquity_mean'], group.attrs['ripple_amplitude'],  group.attrs['ripple_wavelength'],  group.attrs['ripple_chance'], group.attrs['ripple_velocity_x'], group.attrs['ripple_velocity_y'], group.attrs['r'], group.attrs['meanfreepath']])
-#    final = simulateParticle(attrib[0], attrib[1], attrib[2], attrib[3], attrib[4], attrib[5], attrib[6], attrib[7], attrib[8], attrib[9], attrib[10], attrib[11], attrib[12], attrib[13], attrib[14], attrib[15], attrib[16])
-#    print(final)
-    
     count = 1
     while count <= group.attrs['savesteps']:
         
         
         t_step = group.attrs['t_max']/group.attrs['savesteps']*count
-        #open a pool of workers (without parameters uses os.cpu_count amount of workers)
-        pool = Pool()
+        
+        #open a pool of workers (without parameters uses one less then all cores on the machine amount of workers)
+        try:
+            if 0 < sim_cores < os.cpu_count():
+                pool = Pool(sim_cores)
+            else:
+                pool = Pool((os.cpu_count() - 1))
+        except:
+            pool = Pool((os.cpu_count() - 1))
         
         #simulate all particles
         for param in data:
@@ -205,7 +206,7 @@ if __name__ == '__main__':
     ripple_amplitude = simulation_parameters.ripple_amplitude
     ripple_wavelength = simulation_parameters.ripple_wavelength
     ripple_chance = simulation_parameters.ripple_chance
-    ripplevx = - v_up * np.tan(obliquity_mean)
+    ripplevx = simulation_parameters.ripplevx
     ripplevy = simulation_parameters.ripplevy
     particle_number = simulation_parameters.particle_number 
     filename = simulation_parameters.filename
@@ -213,10 +214,16 @@ if __name__ == '__main__':
     starting_x = simulation_parameters.x
     starting_v = simulation_parameters.v
     meanfreepath = simulation_parameters.meanfreepath
+    sim_cores = simulation_parameters.sim_cores
+    
+    ##This was used in my thesis to line the ripple velocity to the NIF
+    #ripplevx = - v_up * np.tan(obliquity_mean)
 
     
     try:
         
+        #This test is wrong!
+        #It only checks the worst case in the x and y axis, but should test the whole 2d surface where the ripple resides
         testx = 0.0
         testy = np.pi / 2.0
         

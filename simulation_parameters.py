@@ -1,9 +1,14 @@
 #File containing the simulation parameters for the single rippled shock simulation
+#Paramenters with units is not verified to work yet
 
 #Simulation file and group name inside file
 
-filename = "errortest.hdf5"
-groupname = "test3"
+filename = "test.hdf5"
+groupname = "test1"
+
+#Choose how many cores to use in the simulation. 
+#If incompatible number is given, then uses all but one core
+sim_cores = 0
 
 #Simulation parameters
 
@@ -12,10 +17,10 @@ unitless = True
 if unitless:
     
     #Number of particles to be simulated
-    particle_number = 1
+    particle_number = 10
 
     #Maximum simulation time
-    t_max = 500.0  
+    t_max = 50.0  
     
     #Number of data writes to file
     savesteps = 1
@@ -87,6 +92,12 @@ else:
     
     #The wavelength of the ripple in the obliquity
     ripple_wavelength = 1.0
+    
+    #The ripple velocity in the x-plane
+    ripplevx = 1.0
+    
+    #The ripple velocity in the y-plane
+    ripplevy = 0.0
     
     #Particle position at injection
     x = 0.0
