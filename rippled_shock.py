@@ -1,6 +1,6 @@
-#
-#Single shock simulation main loop
-#
+"""
+The main simulation file. Reads the parameters, parallelizes the simulation loop and writes the results to file.
+"""
 import random as rnd #random() generates a random float uniformly in the semi-open range [0.0, 1.0)
 import numpy as np
 import h5py
@@ -16,7 +16,52 @@ import simulation_parameters
 
 
 def simulateParticle(particle, x, v, t, mu, t_max, count, totalparticles, v_up, obliquity_mean, ripple_amplitude, ripple_wavelength, ripple_chance, ripplevx, ripplevy, r, mfp):
-    
+    """
+    Simulation loop for a single particle. 
+
+    Parameters
+    ----------
+    particle : int
+        Identifing number of the simulated particle. The number is also used as the seed for the random number generator.
+    x : float
+        Starting position of the particle.
+    v : float
+        Starting velocity of the particle.
+    t : float
+        Starting simulation time of the particle.
+    mu : float
+        Pitch angle cosine. Random value between [-1,1].
+    t_max : float
+        Final simulation time for the particles. When reached the simulation stops.
+    count : int
+        Current iteration of the simulation loop for all particles. Used incase there are multiple saves during the simulation.
+    totalparticles : float
+        The total amount of simulated particles. Used for new randoms if there are multiple saves.
+    v_up : float
+        Upstream bulk plasma flow speed.
+    obliquity_mean : float
+        Angle between the smooth shock normal and the magnetic field.
+    ripple_amplitude : float
+        Ripple amplitude. 
+    ripple_wavelength : float
+        Ripple wavelength. 
+    ripple_chance : float
+        Probability that the particle crosses the rippled shock instead of the normal shock.
+    ripplevx : float
+        Ripple surface movement speed in the x-direction.
+    ripplevy : float
+        Ripple surface movement speed in the y-direction.
+    r : float
+        Gas compression ratio of the shock.
+    mfp : float
+        mean free path of the particle. TESTING INCOMPLETE, USE VALUES OTHER THAN 1.0 AT OWN RISK!
+
+    Returns
+    -------
+    final_info : list
+        Returns the particle number and the final position, velocity, time and pitch angle cosine.
+
+    """
     #Seed random with each particle since multiprocessing breaks higher seedings
     rnd.seed((particle+(totalparticles*(count-1))))
     #Testing with taking compression ratio calculation random numbers from numpy random
@@ -78,6 +123,7 @@ def simulateParticle(particle, x, v, t, mu, t_max, count, totalparticles, v_up, 
                         #Calculate new magnetic compression ratio for downstream
                         r, r_mag, deltau = calculateCompressionRatios(randx, randy, obliquity_mean, ripple_amplitude, ripple_wavelength, ripplevx, ripplevy, r)
                         
+                        #If the particle is able to cross the shock then break the recalculation loop
                         if v*mu + deltau > 0:
                             break
                     
@@ -116,6 +162,19 @@ def simulateParticle(particle, x, v, t, mu, t_max, count, totalparticles, v_up, 
 
 list_of_results = []
 def writeResult(result):
+    """
+    Writes the result of the simulation of a particle to a list of lists. Upkeep of the list is maintained in the parllelSim function.
+
+    Parameters
+    ----------
+    result : list
+        The result of the simulation as a list of particle number, position, velocity, time and pitch angle cosine. 
+
+    Returns
+    -------
+    None. Writes straight to the global list variable list_of_results.
+
+    """
     #Append result to a list of lists
     list_of_results.append(result)
         
@@ -125,6 +184,29 @@ def writeResult(result):
 
 
 def parallelSim(particle_number, t_max, v_up, starting_x, starting_v):
+    """
+    Parallelizes the simulation using multiprocessing. Creates the list of starting particle values, feeds particle simulation to multiprocessing workers and writes results to file.
+    Rest of the simulation parameters are read from file when starting each simulation.
+
+    Parameters
+    ----------
+    particle_number : int
+        Amount of particles initialized for simulation.
+    t_max : float
+        Final simulation time for particles.
+    v_up : float
+        Upstream bulk palsma flow speed.
+    starting_x : float
+        Starting position of particles in the simulation.
+    starting_v : float
+        Starting velocity of particles in the simulation.
+
+    Returns
+    -------
+    None. Writes the results of the simulation to file.
+
+    """
+    
     #Seed random in starting parameter calculations
     np.random.seed(0)
     
@@ -197,6 +279,10 @@ def parallelSim(particle_number, t_max, v_up, starting_x, starting_v):
 
 #__name__ == '__main__' needed by the multiprocessing library to not start infinately many programs
 if __name__ == '__main__':
+    """
+    Startup of the simulation. Reads simulation_parameters.py to initialize all simulation parameters. Tests that the simulation can be run (shock angle does not exceed 90 degrees) and writes shock parameters to file.
+    
+    """
     #Simulation parameters
     r = simulation_parameters.r
     t_max = simulation_parameters.t_max
@@ -222,7 +308,7 @@ if __name__ == '__main__':
     
     try:
         
-        #This test is wrong!
+        #This test is wrong! A working test in the .ipynb file
         #It only checks the worst case in the x and y axis, but should test the whole 2d surface where the ripple resides
         testx = 0.0
         testy = np.pi / 2.0

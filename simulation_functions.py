@@ -1,12 +1,33 @@
-#
-#Functions called in the main simulation program
-#
+"""
+Functions called by the rippled_shock.py simulation.
+"""
+
 import numpy as np
 from numba import jit
 
 
 @jit(nopython=True)
 def changeFrame(v, mu, u):
+    """
+    Changes the frame of reference for the particle from unprimed to primed frame.
+
+    Parameters
+    ----------
+    v : float
+        Velocity of the particle in the starting frame.
+    mu : float
+        Pitch angle cosine of the particle in the starting frame.
+    u : float
+        The velocity difference between the two frames.
+
+    Returns
+    -------
+    v_prime : float
+        The velocity of the particle in the second frame.
+    mu_prime : float
+        The pitch angle cosine of the particle in the second frame.
+
+    """
     
     #Caluclate new velocity
     v_prime = np.sqrt((v*mu - u)**2 + (v**2)*(1 - mu**2))
@@ -19,6 +40,30 @@ def changeFrame(v, mu, u):
 
 @jit(nopython=True)
 def scatterParticle(dt, v, mu, mfp, thetaranvalue, phiranvalue):
+    """
+    Scatters the particle by calculating a new pitch angle cosine for the particle.
+
+    Parameters
+    ----------
+    dt : float
+        The length of the current timestep taken by the particle.
+    v : float
+        The velocity of the particle.
+    mu : float
+        Current pitch angle cosine of the particle.
+    mfp : float
+        Mean free path of the particle.
+    thetaranvalue : float
+        A random float between (0, 1]. Numba changes the function to machine code and so random values cannot be taken inside this function.
+    phiranvalue : float
+        A random float between (0, 1]. Numba changes the function to machine code and so random values cannot be taken inside this function.
+
+    Returns
+    -------
+    mu : float
+        New pitch angle cosine for the particle.
+
+    """
     
     #calculate scattering angles
     theta = np.sqrt( -2.0 * dt *  (v / mfp) * np.log( 1.0 - thetaranvalue ) )
@@ -31,6 +76,26 @@ def scatterParticle(dt, v, mu, mfp, thetaranvalue, phiranvalue):
 
 @jit(nopython=True)
 def calculateRippleX(randx, randy, obliquity_mean, ripple_amplitude):
+    """
+    Calculates the x-coordinate of the rippled crossing position iteratively.
+
+    Parameters
+    ----------
+    randx : float
+        A random float between (0, 1]. Numba changes the function to machine code and so random values cannot be taken inside this function.
+    randy : float
+        A random float between (0, 1]. Numba changes the function to machine code and so random values cannot be taken inside this function.
+    obliquity_mean : float
+        Angle between the smooth shock normal and the magnetic field.
+    ripple_amplitude : float
+        Ripple amplitude.
+
+    Returns
+    -------
+    x : float
+        The x-coordinate of the rippled shock crossing point.
+
+    """
     
     lastx = randx
     
@@ -50,6 +115,38 @@ def calculateRippleX(randx, randy, obliquity_mean, ripple_amplitude):
 
 @jit(nopython=True)
 def calculateCompressionRatios(x, y, obliquity_mean, ripple_amplitude, ripple_wavelength, ripplevx, ripplevy, r):
+    """
+    Calculates the magnetic compression ratio and the shock surface movement speed along the particle trajectory at a randomly chosen point at the ripple surface.
+
+    Parameters
+    ----------
+    x : float
+        A random float between (0, 1]. Numba changes the function to machine code and so random values cannot be taken inside this function.
+    y : float
+        A random float between (0, 1]. Numba changes the function to machine code and so random values cannot be taken inside this function.
+    obliquity_mean : float
+        Angle between the smooth shock normal and the magnetic field.
+    ripple_amplitude : float
+        Ripple amplitude.
+    ripple_wavelength : float
+        Ripple wavelength.
+    ripplevx : float
+        Ripple surface movement speed in the x-direction.
+    ripplevy : float
+        Ripple surface movement speed in the y-direction.
+    r : float
+        Gas compression ratio of the shock.
+
+    Returns
+    -------
+    r : float
+        Gas compression ratio of the shock.
+    r_mag : float
+        Magnetic compression ratio of the shock.
+    deltau : float
+        Movement speed of the rippled shock surface along the particle trajectory.
+
+    """
     
     x = calculateRippleX(x, y, obliquity_mean, ripple_amplitude)
     
@@ -84,6 +181,34 @@ def calculateCompressionRatios(x, y, obliquity_mean, ripple_amplitude, ripple_wa
 
 @jit(nopython=True)
 def moveParticle(x, v, mu, dt, deltau, r_mag):
+    """
+    Moves the particle. If the particle can cross the shock during the movement checks if the particle is transmitted through or mirrored at the shock.
+
+    Parameters
+    ----------
+    x : float
+        The current position of the particle.
+    v : float
+        The current velocity of the particle.
+    mu : float
+        The current pitch angle cosine of the particle.
+    dt : float
+        The timestep of the simulation.
+    deltau : float
+        The movement speed of the rippled shock surface along the particle trajectory.
+    r_mag : float
+        The magnetic compression ratio of the shock.
+
+    Returns
+    -------
+    x_new : float
+        The position of the particle after movement.
+    mu : float
+        The pitch angle cosine of the particle after movement.
+    r_mag : float
+        The magnetic compression ratio of the shock.
+
+    """
     #Calculate threshold value for mu
     mu_0 = (-x)/(v*dt)
     
